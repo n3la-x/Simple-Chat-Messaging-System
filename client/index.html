@@ -1,0 +1,60 @@
+<!doctype html>
+<html>
+<head><meta charset="utf-8" /><title>Chat</title></head>
+<body>
+  <h3>Chat</h3>
+
+  <div>
+    <input id="u" placeholder="username">
+    <input id="p" placeholder="password" type="password">
+    <button onclick="register()">Register</button>
+    <button onclick="login()">Login</button>
+  </div>
+
+  <hr />
+
+  <div>
+    <input id="m" placeholder="message" />
+    <button onclick="sendMsg()">Send</button>
+  </div>
+
+  <pre id="log"></pre>
+
+  <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+  <script>
+    const log = (x) => document.getElementById("log").textContent += x + "\n";
+    let token = null;
+    let socket = null;
+
+    async function register(){
+      const username = u.value, password = p.value;
+      const r = await fetch("http://localhost:4000/api/auth/register", {
+        method:"POST", headers:{"Content-Type":"application/json"},
+        body: JSON.stringify({ username, password })
+      });
+      log("register: " + r.status);
+    }
+
+    async function login(){
+      const username = u.value, password = p.value;
+      const r = await fetch("http://localhost:4000/api/auth/login", {
+        method:"POST", headers:{"Content-Type":"application/json"},
+        body: JSON.stringify({ username, password })
+      });
+      const data = await r.json();
+      token = data.token;
+      log("token: " + (token ? "OK" : "NO"));
+
+      socket = io("http://localhost:4000", { auth: { token } });
+      socket.on("connect", ()=>log("socket connected"));
+      socket.on("message:new", (msg)=>log(`[${msg.senderUsername}] ${msg.content}`));
+    }
+
+    function sendMsg(){
+      if (!socket) return;
+      socket.emit("message:send", { content: m.value });
+      m.value = "";
+    }
+  </script>
+</body>
+</html>

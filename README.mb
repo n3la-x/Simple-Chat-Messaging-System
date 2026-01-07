@@ -1,0 +1,14 @@
+# Simple Chat Messaging System (Microservices + Kafka)
+
+## Services
+- API Gateway (Express + Socket.io) :4000
+- User Service (JWT + bcrypt + SQLite) :4001
+- Message Service (SQLite + Kafka Producer) :4002
+- Analytics Service (Kafka Consumer + /stats) :4003
+- Kafka + Zookeeper (Docker)
+
+## Run
+1. Install Docker + Docker Compose
+2. From project root:
+   ```bash
+   docker compose up --build

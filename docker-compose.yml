@@ -1,0 +1,66 @@
+services:
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.6.1
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    ports:
+      - "2181:2181"
+
+  kafka:
+    image: confluentinc/cp-kafka:7.6.1
+    depends_on:
+      - zookeeper
+    ports:
+      - "9092:9092"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: "zookeeper:2181"
+      KAFKA_ADVERTISED_LISTENERS: "PLAINTEXT://kafka:9092,PLAINTEXT_HOST://localhost:9092"
+      KAFKA_LISTENERS: "PLAINTEXT://0.0.0.0:9092,PLAINTEXT_HOST://0.0.0.0:29092"
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: "PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT"
+      KAFKA_INTER_BROKER_LISTENER_NAME: "PLAINTEXT"
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+
+  user-service:
+    build: ./user-service
+    environment:
+      PORT: 4001
+      JWT_SECRET: "super_secret_change_me"
+    ports:
+      - "4001:4001"
+
+  message-service:
+    build: ./message-service
+    depends_on:
+      - kafka
+    environment:
+      PORT: 4002
+      KAFKA_BROKERS: "kafka:9092"
+    ports:
+      - "4002:4002"
+
+  analytics-service:
+    build: ./analytics-service
+    depends_on:
+      - kafka
+    environment:
+      PORT: 4003
+      KAFKA_BROKERS: "kafka:9092"
+    ports:
+      - "4003:4003"
+
+  api-gateway:
+    build: ./api-gateway
+    depends_on:
+      - user-service
+      - message-service
+      - analytics-service
+    environment:
+      PORT: 4000
+      USER_SERVICE_URL: "http://user-service:4001"
+      MESSAGE_SERVICE_URL: "http://message-service:4002"
+      ANALYTICS_SERVICE_URL: "http://analytics-service:4003"
+      JWT_SECRET: "super_secret_change_me"
+    ports:
+      - "4000:4000"
