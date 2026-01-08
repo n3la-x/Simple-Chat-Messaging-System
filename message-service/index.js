@@ -31,13 +31,32 @@ app.post("/messages", (req, res) => {
         createdAt: new Date().toISOString(),
       };
 
-      // Publish event to Kafka
+      // publikon eventin tek Kafka
       await producer.send({
         topic: TOPIC,
         messages: [{ key: String(senderId), value: JSON.stringify({ type: "MessageSent", payload: message }) }],
       });
 
       res.status(201).json(message);
+    }
+  );
+});
+//ktu bohet leximi i mesazheve nga databaza ne menyre qe chat me pas history
+app.get("/messages", (req, res) => {
+  db.all(
+    `SELECT 
+        id,
+        sender_id AS senderId,
+        sender_username AS senderUsername,
+        content,
+        created_at AS createdAt
+     FROM messages
+     ORDER BY id DESC
+     LIMIT 50`,
+    [],
+    (err, rows) => {
+      if (err) return res.status(500).json({ message: "DB error." });
+      res.json(rows);
     }
   );
 });
