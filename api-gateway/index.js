@@ -38,7 +38,45 @@ app.get("/api/stats", async (_req, res) => {
   const r = await fetch(`${ANALYTICS_SERVICE_URL}/stats`);
   res.status(r.status).json(await r.json());
 });
+//UI MUN  ME PERDOR REST OSE SOCKET NE MENYR QE ME MUJT ME DEMONSTRU PROJEKTIN ME CURL/ Postman pa u lidh me socket
 
+app.get("/api/messages", async (_req, res) => {
+  const r = await fetch(`${MESSAGE_SERVICE_URL}/messages`);
+  res.status(r.status).json(await r.json());
+});
+
+app.post("/api/messages", async (req, res) => {
+  // nëse doni ta mbroni me JWT edhe në REST:
+  const auth = req.headers.authorization || "";
+  const token = auth.startsWith("Bearer ") ? auth.slice(7) : null;
+  if (!token) return res.status(401).json({ message: "Unauthorized" });
+
+  let user;
+  try {
+    user = jwt.verify(token, JWT_SECRET);
+  } catch {
+    return res.status(401).json({ message: "Unauthorized" });
+  }
+
+  const { content } = req.body || {};
+  if (!content || String(content).length > 500) {
+    return res.status(400).json({ message: "Invalid input." });
+  }
+
+  const r = await fetch(`${MESSAGE_SERVICE_URL}/messages`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      senderId: user.userId,
+      senderUsername: user.username,
+      content,
+    }),
+  });
+
+  res.status(r.status).json(await r.json());
+});
+
+/** Kryhert ktu Proxy Messages (REST) */
 const server = http.createServer(app);
 const io = new Server(server, { cors: { origin: "*" } });
 
