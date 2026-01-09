@@ -22,39 +22,84 @@
 
   <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
   <script>
-    const log = (x) => document.getElementById("log").textContent += x + "\n";
-    let token = null;
-    let socket = null;
+  const log = (x) => document.getElementById("log").textContent += x + "\n";
+  let token = null;
+  let socket = null;
 
-    async function register(){
-      const username = u.value, password = p.value;
-      const r = await fetch("http://localhost:4000/api/auth/register", {
-        method:"POST", headers:{"Content-Type":"application/json"},
-        body: JSON.stringify({ username, password })
-      });
-      log("register: " + r.status);
+  async function register(){
+    const username = u.value;
+    const password = p.value;
+
+    if(password.length < 6){
+      alert("Password must be at least 6 characters");
+      return;
     }
 
-    async function login(){
-      const username = u.value, password = p.value;
-      const r = await fetch("http://localhost:4000/api/auth/login", {
-        method:"POST", headers:{"Content-Type":"application/json"},
-        body: JSON.stringify({ username, password })
-      });
-      const data = await r.json();
-      token = data.token;
-      log("token: " + (token ? "OK" : "NO"));
+    const r = await fetch("http://localhost:4000/api/auth/register", {
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({ username, email: username+"@test.com", password })
+    });
 
-      socket = io("http://localhost:4000", { auth: { token } });
-      socket.on("connect", ()=>log("socket connected"));
-      socket.on("message:new", (msg)=>log(`[${msg.senderUsername}] ${msg.content}`));
+    const data = await r.json();
+    log("register: " + JSON.stringify(data));
+  }
+
+  async function login(){
+    const username = u.value, password = p.value;
+
+    const r = await fetch("http://localhost:4000/api/auth/login", {
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({ username, password })
+    });
+
+    const data = await r.json();
+    token = data.token;
+
+    if(!token){
+      log("login failed");
+      return;
     }
 
-    function sendMsg(){
-      if (!socket) return;
-      socket.emit("message:send", { content: m.value });
-      m.value = "";
-    }
+    log("login OK");
+
+    // connect socket with JWT
+    socket = io("http://localhost:4000", { auth: { token } });
+    socket.on("connect", ()=>log("socket connected"));
+    socket.on("message:new", (msg)=>log(`[${msg.senderUsername}] ${msg.content}`));
+
+    // load history
+    loadMessages();
+    loadStats();
+  }
+
+  async function loadMessages(){
+    const r = await fetch("http://localhost:4000/api/messages");
+    const data = await r.json();
+    log("---- history ----");
+    data.reverse().forEach(m => {
+      log(`[${m.senderUsername}] ${m.content}`);
+    });
+    log("-----------------");
+  }
+
+  async function loadStats(){
+    const r = await fetch("http://localhost:4000/api/stats");
+    const data = await r.json();
+    log("Total messages: " + data.totalMessages);
+  }
+
+  function sendMsg(){
+    if (!socket) return;
+    socket.emit("message:send", { content: m.value });
+    m.value = "";
+
+    // refresh stats after send
+    setTimeout(loadStats, 500);
+  }
+
+
   </script>
 </body>
 </html>
