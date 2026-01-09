@@ -27,6 +27,9 @@ services:
     environment:
       PORT: 4001
       JWT_SECRET: "super_secret_change_me"
+      INTERNAL_API_KEY: "internal_key_change_me" 
+      ADMIN_USERNAME: "admin"
+      ADMIN_PASSWORD: "admin123456"
     ports:
       - "4001:4001"
 
