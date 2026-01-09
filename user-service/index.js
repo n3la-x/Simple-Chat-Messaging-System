@@ -100,7 +100,7 @@ app.post("/admin/users", requireInternal, async (req, res) => {
   const safeRole = role === "admin" ? "admin" : "user";
 
   db.run(
-    `INSERT INTO users (username, email, password_hash, role) VALUES (?, ?, ?, ?)`,
+    `INSERT INTO users (username, email, password_hash, role) VALUES (?, ?, ?, 'user')`,
     [username, email || null, passwordHash, safeRole],
     function (err) {
       if (err) return res.status(409).json({ message: "User/email exists." });
