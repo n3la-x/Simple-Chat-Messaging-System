@@ -1,0 +1,76 @@
+<mxfile host="app.diagrams.net" agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36" version="29.3.0">
+  <diagram name="Architecture" id="GK8uw5CHze11I6zDetX_">
+    <mxGraphModel dx="644" dy="421" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="hFK67GClD7NUxa886liD-1" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontStyle=1;" value="Client (Browser)&#xa;index.html&#xa;- fetch (REST)&#xa;- socket.io (WS)" vertex="1">
+          <mxGeometry height="120" width="210" x="60" y="220" as="geometry" />
+        </mxCell>
+        <mxCell id="hFK67GClD7NUxa886liD-2" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;" value="API Gateway :4000&#xa;- REST endpoints (/api/*)&#xa;- Socket.IO server&#xa;- JWT verify (auth + role)&#xa;- Proxy to services" vertex="1">
+          <mxGeometry height="160" width="260" x="330" y="200" as="geometry" />
+        </mxCell>
+        <mxCell id="hFK67GClD7NUxa886liD-3" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontStyle=1;" value="User Service :4001&#xa;- Register/Login&#xa;- SQLite users.db&#xa;- JWT sign&#xa;- Admin endpoints (internal only)" vertex="1">
+          <mxGeometry height="150" width="270" x="670" y="90" as="geometry" />
+        </mxCell>
+        <mxCell id="hFK67GClD7NUxa886liD-4" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontStyle=1;" value="Message Service :4002&#xa;- Save messages&#xa;- SQLite messages.db&#xa;- Kafka Producer&#xa;Topic: chat.messages" vertex="1">
+          <mxGeometry height="150" width="270" x="670" y="270" as="geometry" />
+        </mxCell>
+        <mxCell id="hFK67GClD7NUxa886liD-5" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontStyle=1;" value="Analytics Service :4003&#xa;- Kafka Consumer&#xa;- Calculates stats&#xa;GET /stats" vertex="1">
+          <mxGeometry height="140" width="270" x="670" y="450" as="geometry" />
+        </mxCell>
+        <mxCell id="hFK67GClD7NUxa886liD-6" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontStyle=1;" value="Kafka Broker :9092&#xa;Topic: chat.messages" vertex="1">
+          <mxGeometry height="110" width="210" x="1020" y="330" as="geometry" />
+        </mxCell>
+        <mxCell id="hFK67GClD7NUxa886liD-7" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" value="Zookeeper :2181" vertex="1">
+          <mxGeometry height="80" width="210" x="1020" y="210" as="geometry" />
+        </mxCell>
+        <mxCell id="hFK67GClD7NUxa886liD-8" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#eeeeee;strokeColor=#666666;" value="Docker Compose&#xa;- starts all services&#xa;- internal network (DNS: service names)&#xa;- env vars (JWT_SECRET, INTERNAL_API_KEY)" vertex="1">
+          <mxGeometry height="140" width="260" x="330" y="410" as="geometry" />
+        </mxCell>
+        <mxCell id="hFK67GClD7NUxa886liD-9" edge="1" parent="1" source="hFK67GClD7NUxa886liD-1" style="endArrow=block;html=1;strokeWidth=2;" target="hFK67GClD7NUxa886liD-2" value="HTTP (REST) + WebSocket">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="hFK67GClD7NUxa886liD-10" edge="1" parent="1" source="hFK67GClD7NUxa886liD-2" style="endArrow=block;html=1;strokeWidth=2;" target="hFK67GClD7NUxa886liD-3" value="REST proxy&#xa;/api/auth/*">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="hFK67GClD7NUxa886liD-11" edge="1" parent="1" source="hFK67GClD7NUxa886liD-2" style="endArrow=block;html=1;strokeWidth=2;" target="hFK67GClD7NUxa886liD-4" value="REST + Socket events&#xa;/messages">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="hFK67GClD7NUxa886liD-12" edge="1" parent="1" source="hFK67GClD7NUxa886liD-2" style="endArrow=block;html=1;strokeWidth=2;" target="hFK67GClD7NUxa886liD-5" value="REST proxy&#xa;/api/stats">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="hFK67GClD7NUxa886liD-13" edge="1" parent="1" source="hFK67GClD7NUxa886liD-4" style="endArrow=block;html=1;strokeWidth=2;dashed=1;" target="hFK67GClD7NUxa886liD-6" value="Publish event&#xa;MessageSent">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="hFK67GClD7NUxa886liD-14" edge="1" parent="1" source="hFK67GClD7NUxa886liD-6" style="endArrow=block;html=1;strokeWidth=2;dashed=1;" target="hFK67GClD7NUxa886liD-5" value="Consume event&#xa;update stats">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="hFK67GClD7NUxa886liD-15" edge="1" parent="1" source="hFK67GClD7NUxa886liD-7" style="endArrow=block;html=1;strokeWidth=2;" target="hFK67GClD7NUxa886liD-6" value="coordination">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="hFK67GClD7NUxa886liD-16" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#000000;dashed=1;" value="Security notes&#xa;• JWT: user/admin role in token&#xa;• Admin routes: requireAuth + requireAdmin&#xa;• Service-to-service: x-internal-key (Zero Trust)&#xa;• External entrypoint: API Gateway only" vertex="1">
+          <mxGeometry height="120" width="530" x="60" y="60" as="geometry" />
+        </mxCell>
+        <mxCell id="hFK67GClD7NUxa886liD-17" edge="1" parent="1" source="hFK67GClD7NUxa886liD-8" style="endArrow=block;html=1;dashed=1;strokeWidth=1;" target="hFK67GClD7NUxa886liD-2" value="runs">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="hFK67GClD7NUxa886liD-18" edge="1" parent="1" source="hFK67GClD7NUxa886liD-8" style="endArrow=block;html=1;dashed=1;strokeWidth=1;" target="hFK67GClD7NUxa886liD-3" value="runs">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="hFK67GClD7NUxa886liD-19" edge="1" parent="1" source="hFK67GClD7NUxa886liD-8" style="endArrow=block;html=1;dashed=1;strokeWidth=1;" target="hFK67GClD7NUxa886liD-4" value="runs">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="hFK67GClD7NUxa886liD-20" edge="1" parent="1" source="hFK67GClD7NUxa886liD-8" style="endArrow=block;html=1;dashed=1;strokeWidth=1;" target="hFK67GClD7NUxa886liD-5" value="runs">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="hFK67GClD7NUxa886liD-21" edge="1" parent="1" source="hFK67GClD7NUxa886liD-8" style="endArrow=block;html=1;dashed=1;strokeWidth=1;" target="hFK67GClD7NUxa886liD-6" value="runs">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="hFK67GClD7NUxa886liD-22" edge="1" parent="1" source="hFK67GClD7NUxa886liD-8" style="endArrow=block;html=1;dashed=1;strokeWidth=1;" target="hFK67GClD7NUxa886liD-7" value="runs">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
