@@ -9,10 +9,34 @@ const USER_SERVICE_URL = process.env.USER_SERVICE_URL;
 const MESSAGE_SERVICE_URL = process.env.MESSAGE_SERVICE_URL;
 const ANALYTICS_SERVICE_URL = process.env.ANALYTICS_SERVICE_URL;
 const JWT_SECRET = process.env.JWT_SECRET;
+const INTERNAL_API_KEY = process.env.INTERNAL_API_KEY;
+
 
 const app = express();
 app.use(cors());
 app.use(express.json());
+// ketu i kom shtu dy middleware qe e kontrollojn request
+function requireAuth(req, res, next) {
+  const auth = req.headers.authorization || "";
+  const token = auth.startsWith("Bearer ") ? auth.slice(7) : null;
+  if (!token) return res.status(401).json({ message: "Unauthorized" });
+
+  try {
+    req.user = jwt.verify(token, JWT_SECRET);
+    next();
+  } catch {
+    return res.status(401).json({ message: "Unauthorized" });
+  }
+}
+
+function requireAdmin(req, res, next) {
+  if (req.user?.role !== "admin") {
+    return res.status(403).json({ message: "Forbidden" });
+  }
+  next();
+}
+
+
 
 /** Proxy REST to User Service */
 app.post("/api/auth/register", async (req, res) => {
@@ -32,6 +56,34 @@ app.post("/api/auth/login", async (req, res) => {
   });
   res.status(r.status).json(await r.json());
 });
+/**ADMIN ROUTES */
+/** Admin proxy -> User Service (vetëm admin) */
+app.get("/api/admin/users", requireAuth, requireAdmin, async (_req, res) => {
+  const r = await fetch(`${USER_SERVICE_URL}/admin/users`, {
+    headers: { "x-internal-key": INTERNAL_API_KEY },
+  });
+  res.status(r.status).json(await r.json());
+});
+
+app.post("/api/admin/users", requireAuth, requireAdmin, async (req, res) => {
+  const r = await fetch(`${USER_SERVICE_URL}/admin/users`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "x-internal-key": INTERNAL_API_KEY,
+    },
+    body: JSON.stringify(req.body),
+  });
+  res.status(r.status).json(await r.json());
+});
+
+app.delete("/api/admin/users/:id", requireAuth, requireAdmin, async (req, res) => {
+  const r = await fetch(`${USER_SERVICE_URL}/admin/users/${req.params.id}`, {
+    method: "DELETE",
+    headers: { "x-internal-key": INTERNAL_API_KEY },
+  });
+  res.status(r.status).json(await r.json());
+});
 
 /** Proxy Stats */
 app.get("/api/stats", async (_req, res) => {
@@ -39,8 +91,8 @@ app.get("/api/stats", async (_req, res) => {
   res.status(r.status).json(await r.json());
 });
 //UI MUN  ME PERDOR REST OSE SOCKET NE MENYR QE ME MUJT ME DEMONSTRU PROJEKTIN ME CURL/ Postman pa u lidh me socket
-
-app.get("/api/messages", async (_req, res) => {
+//KTU E KOM BO NI NDRYSHIM QE USER NORMAL NUK E SHEH HISTORINE ME REST POR VETEM ADINI
+app.get("/api/messages", requireAuth, requireAdmin, async (_req, res) =>  {
   const r = await fetch(`${MESSAGE_SERVICE_URL}/messages`);
   res.status(r.status).json(await r.json());
 });

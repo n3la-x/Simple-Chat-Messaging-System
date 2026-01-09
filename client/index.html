@@ -1,105 +1,255 @@
 <!doctype html>
 <html>
-<head><meta charset="utf-8" /><title>Chat</title></head>
+<head>
+  <meta charset="utf-8" />
+  <title>Chat</title>
+  <style>
+    body { font-family: Arial, sans-serif; }
+    .row { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+    .box { border:1px solid #ccc; padding:10px; margin:10px 0; }
+    #adminPanel { display:none; }
+    #chatPanel { display:none; }
+    input { padding:6px; }
+    button { padding:6px 10px; cursor:pointer; }
+  </style>
+</head>
 <body>
   <h3>Chat</h3>
 
-  <div>
-    <input id="u" placeholder="username">
-    <input id="p" placeholder="password" type="password">
-    <button onclick="register()">Register</button>
-    <button onclick="login()">Login</button>
+  <div class="box">
+    <div class="row">
+      <input id="u" placeholder="username">
+      <input id="p" placeholder="password" type="password">
+      <button onclick="register()">Register</button>
+      <button onclick="login()">Login</button>
+      <button onclick="logout()">Logout</button>
+    </div>
+    <small id="who"></small>
   </div>
 
-  <hr />
-
-  <div>
-    <input id="m" placeholder="message" />
-    <button onclick="sendMsg()">Send</button>
+  <div id="chatPanel" class="box">
+    <h4>Live Chat</h4>
+    <div class="row">
+      <input id="m" placeholder="message" style="width:320px" />
+      <button onclick="sendMsg()">Send</button>
+    </div>
   </div>
 
-  <pre id="log"></pre>
+  <div id="adminPanel" class="box">
+    <h4>Admin Panel</h4>
+
+    <div class="row">
+      <button onclick="loadMessages()">Load History</button>
+      <button onclick="loadStats()">Load Stats</button>
+      <button onclick="loadUsers()">Load Users</button>
+    </div>
+
+    <hr />
+
+    <h5>Add User</h5>
+    <div class="row">
+      <input id="au" placeholder="new username">
+      <input id="ae" placeholder="email (optional)">
+      <input id="ap" placeholder="password (min 6)" type="password">
+      <select id="ar">
+        <option value="user">user</option>
+        <option value="admin">admin</option>
+      </select>
+      <button onclick="addUser()">Add</button>
+    </div>
+
+    <hr />
+
+    <h5>Delete User</h5>
+    <div class="row">
+      <input id="du" placeholder="user id to delete" style="width:140px">
+      <button onclick="deleteUser()">Delete</button>
+    </div>
+  </div>
+
+  <pre id="log" class="box" style="white-space:pre-wrap;"></pre>
 
   <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
   <script>
-  const log = (x) => document.getElementById("log").textContent += x + "\n";
-  let token = null;
-  let socket = null;
+    const API = "http://localhost:4000";
+    const log = (x) => document.getElementById("log").textContent += x + "\n";
 
-  async function register(){
-    const username = u.value;
-    const password = p.value;
+    let token = null;
+    let socket = null;
+    let me = null; // payload from JWT
 
-    if(password.length < 6){
-      alert("Password must be at least 6 characters");
-      return;
+    function parseJwt(t){
+      try{
+        const base64 = t.split(".")[1].replace(/-/g, "+").replace(/_/g, "/");
+        const json = decodeURIComponent(atob(base64).split("").map(c => "%" + ("00"+c.charCodeAt(0).toString(16)).slice(-2)).join(""));
+        return JSON.parse(json);
+      }catch{
+        return null;
+      }
     }
 
-    const r = await fetch("http://localhost:4000/api/auth/register", {
-      method:"POST",
-      headers:{"Content-Type":"application/json"},
-      body: JSON.stringify({ username, email: username+"@test.com", password })
-    });
-
-    const data = await r.json();
-    log("register: " + JSON.stringify(data));
-  }
-
-  async function login(){
-    const username = u.value, password = p.value;
-
-    const r = await fetch("http://localhost:4000/api/auth/login", {
-      method:"POST",
-      headers:{"Content-Type":"application/json"},
-      body: JSON.stringify({ username, password })
-    });
-
-    const data = await r.json();
-    token = data.token;
-
-    if(!token){
-      log("login failed");
-      return;
+    function authHeaders(){
+      return token ? { "Authorization": "Bearer " + token } : {};
     }
 
-    log("login OK");
+    function showPanels(){
+      const isAdmin = me?.role === "admin";
+      document.getElementById("chatPanel").style.display = token ? "block" : "none";
+      document.getElementById("adminPanel").style.display = (token && isAdmin) ? "block" : "none";
+      document.getElementById("who").textContent = token
+        ? `Logged in as: ${me?.username || "?"} (role: ${me?.role || "?"})`
+        : "Not logged in";
+    }
 
-    // connect socket with JWT
-    socket = io("http://localhost:4000", { auth: { token } });
-    socket.on("connect", ()=>log("socket connected"));
-    socket.on("message:new", (msg)=>log(`[${msg.senderUsername}] ${msg.content}`));
+    async function register(){
+      const username = u.value.trim();
+      const password = p.value;
 
-    // load history
-    loadMessages();
-    loadStats();
-  }
+      if(!username) return alert("Username required");
+      if(password.length < 6) return alert("Password must be at least 6 characters");
 
-  async function loadMessages(){
-    const r = await fetch("http://localhost:4000/api/messages");
-    const data = await r.json();
-    log("---- history ----");
-    data.reverse().forEach(m => {
-      log(`[${m.senderUsername}] ${m.content}`);
-    });
-    log("-----------------");
-  }
+      const r = await fetch(API + "/api/auth/register", {
+        method:"POST",
+        headers:{ "Content-Type":"application/json" },
+        body: JSON.stringify({ username, email: username+"@test.com", password })
+      });
 
-  async function loadStats(){
-    const r = await fetch("http://localhost:4000/api/stats");
-    const data = await r.json();
-    log("Total messages: " + data.totalMessages);
-  }
+      const data = await r.json().catch(()=>({}));
+      log("register: " + r.status + " " + JSON.stringify(data));
+    }
 
-  function sendMsg(){
-    if (!socket) return;
-    socket.emit("message:send", { content: m.value });
-    m.value = "";
+    async function login(){
+      const username = u.value.trim();
+      const password = p.value;
 
-    // refresh stats after send
-    setTimeout(loadStats, 500);
-  }
+      const r = await fetch(API + "/api/auth/login", {
+        method:"POST",
+        headers:{ "Content-Type":"application/json" },
+        body: JSON.stringify({ username, password })
+      });
 
+      const data = await r.json().catch(()=>({}));
+      token = data.token;
 
+      if(!token){
+        log("login failed: " + JSON.stringify(data));
+        return;
+      }
+
+      me = parseJwt(token);
+      log("login OK");
+      showPanels();
+
+      // connect socket with JWT (everyone can join live chat)
+      socket = io(API, { auth: { token } });
+      socket.on("connect", ()=>log("socket connected"));
+      socket.on("connect_error", (e)=>log("socket error: " + e.message));
+      socket.on("message:new", (msg)=>log(`[${msg.senderUsername}] ${msg.content}`));
+
+      // Only admin can load history/stats via REST (because backend requires admin)
+      if(me?.role === "admin"){
+        await loadMessages();
+        await loadStats();
+        await loadUsers();
+      } else {
+        log("User mode: live chat only (no history/stats).");
+      }
+    }
+
+    function logout(){
+      token = null;
+      me = null;
+      if(socket){
+        socket.disconnect();
+        socket = null;
+      }
+      log("logged out");
+      showPanels();
+    }
+
+    async function loadMessages(){
+      const r = await fetch(API + "/api/messages", { headers: { ...authHeaders() } });
+      const data = await r.json().catch(()=>({}));
+      if(!r.ok){
+        log("history error: " + r.status + " " + JSON.stringify(data));
+        return;
+      }
+      log("---- history ----");
+      data.reverse().forEach(m => log(`[${m.senderUsername}] ${m.content}`));
+      log("-----------------");
+    }
+
+    async function loadStats(){
+      const r = await fetch(API + "/api/stats");
+      const data = await r.json().catch(()=>({}));
+      if(!r.ok){
+        log("stats error: " + r.status + " " + JSON.stringify(data));
+        return;
+      }
+      log("Total messages: " + data.totalMessages);
+    }
+
+    function sendMsg(){
+      if (!socket) return;
+      const content = m.value;
+      socket.emit("message:send", { content });
+      m.value = "";
+      // stats endpoint është publik, por ti mundesh me e lan vetëm për admin nëse do
+      setTimeout(()=>{ if(me?.role==="admin") loadStats(); }, 400);
+    }
+
+    // ===== ADMIN UI actions =====
+
+    async function loadUsers(){
+      const r = await fetch(API + "/api/admin/users", { headers: { ...authHeaders() } });
+      const data = await r.json().catch(()=>({}));
+      if(!r.ok){
+        log("users error: " + r.status + " " + JSON.stringify(data));
+        return;
+      }
+      log("---- users ----");
+      data.forEach(u => log(`#${u.id} ${u.username} (${u.role}) ${u.email || ""}`));
+      log("--------------");
+    }
+
+    async function addUser(){
+      const username = au.value.trim();
+      const email = ae.value.trim() || null;
+      const password = ap.value;
+      const role = ar.value;
+
+      if(!username) return alert("Username required");
+      if(password.length < 6) return alert("Password must be at least 6 characters");
+
+      const r = await fetch(API + "/api/admin/users", {
+        method:"POST",
+        headers:{
+          "Content-Type":"application/json",
+          ...authHeaders()
+        },
+        body: JSON.stringify({ username, email, password, role })
+      });
+
+      const data = await r.json().catch(()=>({}));
+      log("add user: " + r.status + " " + JSON.stringify(data));
+      if(r.ok) loadUsers();
+    }
+
+    async function deleteUser(){
+      const id = du.value.trim();
+      if(!id) return alert("User id required");
+
+      const r = await fetch(API + "/api/admin/users/" + encodeURIComponent(id), {
+        method:"DELETE",
+        headers:{ ...authHeaders() }
+      });
+
+      const data = await r.json().catch(()=>({}));
+      log("delete user: " + r.status + " " + JSON.stringify(data));
+      if(r.ok) loadUsers();
+    }
+
+    showPanels();
   </script>
 </body>
 </html>
