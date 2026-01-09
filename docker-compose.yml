@@ -64,6 +64,7 @@ services:
       USER_SERVICE_URL: "http://user-service:4001"
       MESSAGE_SERVICE_URL: "http://message-service:4002"
       ANALYTICS_SERVICE_URL: "http://analytics-service:4003"
+      INTERNAL_API_KEY: "internal_key_change_me"
       JWT_SECRET: "super_secret_change_me"
     ports:
       - "4000:4000"
